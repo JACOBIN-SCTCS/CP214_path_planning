@@ -5,6 +5,7 @@ from map import Map
 
 pygame.init()
 m = Map()
+m.drawObstacles()
 
 while True:
     pygame.display.update()
