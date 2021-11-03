@@ -10,6 +10,7 @@ class RRTStar:
         self.obstacles = []
         self.nObstacles = numObstacles
         self.obstacle_dim = 20
+        self.delta = 5
         self.window_width = W
         self.window_height = H
         self.starting_point = ()
@@ -42,8 +43,17 @@ class RRTStar:
                 nearest_node_idx = i
         return nearest_node_idx
 
-    def rewire():
+    def rewire(self,parent_idx):
         pass
+    
+    def plot_path(self):
+        current_idx = len(self.x)-1
+        prev = current_idx
+        while(self.parent[current_idx]!=-1):
+            prev = current_idx
+            current_idx = self.parent[current_idx]
+            pygame.draw.line(self.screen,(255,0,0),(self.x[current_idx],self.y[current_idx]),(self.x[prev],self.y[prev]),3)
+
 
 
     def start_planning(self):
@@ -51,7 +61,7 @@ class RRTStar:
         self.y.append(self.starting_point[1])
         self.distance.append(0)
         self.parent.append(-1)
-
+        reached_destination = False
         t=0
         while(t<self.num_iterations):
             x_rand = np.random.randint(0,self.window_height)
@@ -87,12 +97,23 @@ class RRTStar:
                 u = i/200  
                 x_line = int((u*self.x[idx])+((1-u)*x_steer))
                 y_line = int((u*self.y[idx])+((1-u)*y_steer))
+                
+                goal = self.ending_point
+                if((goal[0]-self.delta<=x_line <=goal[0]+self.delta)
+                    and ((goal[1]-self.delta<=y_line <=goal[1]+self.delta))):
 
+                    reached_destination= True
+                    x_steer = goal[0]
+                    y_steer = goal[1]
+                    dist = (x_steer-self.x[idx])*(x_steer-self.x[idx]) + ((y_steer-self.y[idx])*(y_steer-self.y[idx]))
+
+                    break 
+                
                 for obstacle in self.obstacles:
                     if(obstacle.collidepoint((x_line,y_line))):
                         obstacle_edge = True
                         break
-                if(obstacle_edge):
+                if(obstacle_edge or reached_destination):
                     break
             
             if(not obstacle_edge):
@@ -103,7 +124,14 @@ class RRTStar:
                 pygame.draw.circle(self.screen,(0,0,0),(x_steer,y_steer),2)
                 pygame.draw.line(self.screen,(0,0,0),(self.x[idx],self.y[idx]),(x_steer,y_steer))
                 pygame.display.update()
+            
+            if(reached_destination):
+                print("Destination reached")
+                break
             t+=1
+        if(reached_destination):
+            self.plot_path()
+
 
     def set_start_end_point(self,start,end):
         for obstacle in self.obstacles:
