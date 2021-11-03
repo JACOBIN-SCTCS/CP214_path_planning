@@ -100,7 +100,7 @@ class RRTStar:
         while(self.parent[current_idx]!=-1):
             prev = current_idx
             current_idx = self.parent[current_idx]
-            pygame.draw.line(self.screen,(255,0,0),(self.x[current_idx],self.y[current_idx]),(self.x[prev],self.y[prev]),3)
+            pygame.draw.line(self.screen,RED_COLOR,(self.x[current_idx],self.y[current_idx]),(self.x[prev],self.y[prev]),3)
 
 
 
@@ -218,8 +218,8 @@ class Map:
         self.screen = pygame.display.set_mode((wH,wW))
         self.screen.fill(WHITE_COLOR)
         self.obstacle_color = (128,128,128)
-        self.starting_point_color = (255,0,0)
-        self.ending_point_color = (0,255,0)
+        self.starting_point_color = RED_COLOR
+        self.ending_point_color = GREEN_COLOR
         self.rrt_star  = RRTStar(wW,wH,self.screen)
 
     def set_starting_ending_point(self,start,end):
