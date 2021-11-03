@@ -15,9 +15,9 @@ class RRTStar:
         self.window_height = H
         self.starting_point = ()
         self.ending_point = ()
-        self.num_iterations  = 1000
+        self.num_iterations  = 5000
         self.steer_distance = 35
-        self.rewire_radius = 7
+        self.rewire_radius = 30
         self.screen =screen
         self.x = []
         self.y = []
@@ -33,18 +33,53 @@ class RRTStar:
             obstacle = Rect(x_coord[i],y_coord[i],self.obstacle_dim,self.obstacle_dim)
             self.obstacles.append(obstacle)
 
-    def get_nearest_node_idx(self,x,y):
-        distance = (self.x[0]-x)*(self.x[0]-x) + (self.y[0]-y)*(self.y[0]-y)
+    def get_nearest_node_idx(self,x_new,y_new):
+        distance = math.hypot(self.x[0]-x_new,self.y[0]-y_new)
         nearest_node_idx = 0
         for i in range(len(self.x)):
-            cur_distance = (self.x[i]-x)*(self.x[i]-x) + (self.y[i]-y)*(self.y[i]-y)
+            cur_distance = math.hypot(self.x[i]-x_new,self.y[i]-y_new)
             if (cur_distance< distance):
                 distance = cur_distance
                 nearest_node_idx = i
         return nearest_node_idx
 
-    def rewire(self,parent_idx):
-        pass
+    def rewire(self,current_idx,parent_idx):
+       
+       for i in range(len(self.x)):
+           if(i != current_idx and i!=parent_idx):
+               
+               x_coord,y_coord = self.x[i],self.y[i]
+               dist = math.hypot(x_coord-self.x[current_idx],y_coord-self.y[current_idx])
+               if(dist<= self.rewire_radius):
+
+                   neighbouring_distance = 0.0
+                   curr = prev = i 
+                   while(self.parent[curr]!=-1):
+                       prev = curr 
+                       curr = self.parent[curr]
+                       neighbouring_distance += math.hypot(self.x[prev]-self.x[curr],self.y[prev]-self.y[curr])
+                   if(neighbouring_distance >  self.distance[current_idx]+dist):
+                       
+                       obstacles_present = False
+                       for k in range(200):
+                           u = k/200
+                           x_line = int((u*self.x[i])+ ((1-u)*self.x[current_idx]))
+                           y_line = int((u*self.y[i])+ ((1-u)*self.y[current_idx]))
+                           for obstacle in self.obstacles:
+                               if (obstacle.collidepoint((x_line,y_line))):
+                                   obstacles_present = True
+                                   break
+                           if(obstacles_present):
+                               break
+                       
+                       if(not obstacles_present):
+                           pygame.draw.line(self.screen,(255,255,255),(self.x[self.parent[i]],self.y[self.parent[i]]),(self.x[i],self.y[i])) 
+                           self.parent[i] = current_idx
+                           pygame.draw.line(self.screen,(0,0,0),(self.x[i],self.y[i]),(self.x[current_idx],self.y[current_idx]))
+                           self.distance[i] = self.distance[current_idx] + dist
+                        
+
+
     
     def plot_path(self):
         current_idx = len(self.x)-1
@@ -59,8 +94,9 @@ class RRTStar:
     def start_planning(self):
         self.x.append(self.starting_point[0])
         self.y.append(self.starting_point[1])
-        self.distance.append(0)
+        self.distance.append(0.0)
         self.parent.append(-1)
+
         reached_destination = False
         t=0
         while(t<self.num_iterations):
@@ -70,12 +106,12 @@ class RRTStar:
             idx = self.get_nearest_node_idx(x_rand,y_rand)
             
             #candidate_node=[x_rand,y_rand]
-
-            dist = (x_rand-self.x[idx])*(x_rand-self.x[idx]) + (y_rand-self.y[idx])*(y_rand-self.y[idx])
+            dist = 0.0
+            dist = math.hypot(x_rand-self.x[idx],y_rand-self.y[idx])
             x_steer = 0
             y_steer = 0
 
-            if(dist<=(self.steer_distance*self.steer_distance)):
+            if(dist<=self.steer_distance):
                 x_steer = x_rand
                 y_steer = y_rand
             else:
@@ -90,6 +126,7 @@ class RRTStar:
                     obstacle_collide = True
                     break
             if(obstacle_collide):
+                t+=1
                 continue
             
             obstacle_edge = False
@@ -105,7 +142,7 @@ class RRTStar:
                     reached_destination= True
                     x_steer = goal[0]
                     y_steer = goal[1]
-                    dist = (x_steer-self.x[idx])*(x_steer-self.x[idx]) + ((y_steer-self.y[idx])*(y_steer-self.y[idx]))
+                    dist = math.hypot(x_steer-self.x[idx],y_steer-self.y[idx])
 
                     break 
                 
@@ -113,18 +150,34 @@ class RRTStar:
                     if(obstacle.collidepoint((x_line,y_line))):
                         obstacle_edge = True
                         break
+
                 if(obstacle_edge or reached_destination):
                     break
             
-            if(not obstacle_edge):
+            if(not obstacle_edge ):
                 self.x.append(x_steer)
                 self.y.append(y_steer)
                 self.parent.append(idx)
-                self.distance.append(math.sqrt(dist))
+
+                parent_distance = 0.0 
+                prev = current_node = idx
+                while(self.parent[current_node]!=-1):
+                    prev = current_node
+                    current_node = self.parent[current_node]
+                    parent_distance +=  math.hypot(self.x[prev]-self.x[current_node],self.y[prev]-self.y[current_node])
+                
+                self.distance[idx] = parent_distance
+
+                self.distance.append(self.distance[idx]+ dist)
+                #print(str(self.x[-1])+","+str(self.y[-1])+"d:"+str(self.distance[-1]))
                 pygame.draw.circle(self.screen,(0,0,0),(x_steer,y_steer),2)
                 pygame.draw.line(self.screen,(0,0,0),(self.x[idx],self.y[idx]),(x_steer,y_steer))
+                #myfont = pygame.font.SysFont('Comic Sans MS', 15)
+                #textsurface = myfont.render(str(int(self.distance[-1])), False, (0, 0, 0))
+                #self.screen.blit(textsurface,(x_steer,y_steer))
                 pygame.display.update()
-            
+                self.rewire(len(self.x)-1,idx)
+
             if(reached_destination):
                 print("Destination reached")
                 break
